@@ -1,0 +1,194 @@
+<?xml version="1.0"?>
+
+<project name="Cim" default="test">
+	<property file="build.properties"/>
+	<target name = "path" >
+		<property name="baseDir"    value="/home/s285683/apache/baseNdrum" />
+		<property name="srcDir"    value="/home/s285683/apache/src" />
+   		<property name="dstDir"    value="/home/s285683/apache/" />
+		<property name="junit"    value="\home\s285683\apache\lib\junit-4.13.2.jar"/>
+		<property name="local_policy"    value="\home\s285683\apache\lib\local_policy.jar"/>
+		<property name="export_policy"    value="\home\s285683\apache\lib\US_export_policy.jar"/>
+		<property name="ham"    value="\home\s285683\apache\lib\hamcrest-2.2.jar"/>
+		<property name="jsch"    value="\home\s285683\apache\lib\jsch-0.1.55.jar"/>
+		<property name="api"    value="\home\s285683\apache\lib\junit-jupiter-api-5.8.0-M1.jar"/>
+
+
+		
+		<echo> Initializing paths...</echo>
+	</target>
+	
+	<path id="junit.class.path">
+        
+        <fileset dir="/home/s285683/apache/lib" includes="hamcrest-2.2.jar"/>
+	<fileset dir="/home/s285683/apache/lib" includes="junit-4.13.2.jar"/>
+	
+	
+	<pathelement location="${baseDir}/"/>
+        <pathelement location="/home/s285683/apache/Test_class"/>
+    	</path>
+
+	
+
+		<target name="compile" depends="path">
+		
+    		<echo>Compiling java files...</echo>
+		<local name="fail"/>
+
+    		<javac destdir="${baseDir}/" srcdir="${srcDir}/"  includeAntruntime="false" classpath="${junit};${baseDir}" includeantruntime="false" errorProperty="fail" failonerror="false"  />
+		
+		<javac destdir="Test_class" srcdir="/home/s285683/apache/Test" includeAntruntime="false" classpath="${junit};${ham};${baseDir}" includeantruntime="false" errorProperty="fail" failonerror="false" target="1.6" source="1.6"/>
+        	<condition property="compile.fail">
+            		<istrue value="${fail}"/>
+        	</condition>
+
+        	<condition property="compile.successful">
+            		<not>
+                		<istrue value="${fail}"/>
+            		</not>
+  		</condition>
+	</target>
+	<target name="build" depends="compile">
+   		<echo>Making jar file...</echo>
+		 <condition property="build.fail">
+            	<istrue value="${compile.fail}"/>
+        	</condition>
+        	<delete> 
+		<fileset dir="${baseDir}/" includes="*.jar"/>
+
+		</delete>
+    		<jar destfile="${baseDir}/myProject.jar">
+			
+    			<fileset dir="${baseDir}/">
+			<include name="Main.class">
+			</include>
+			<include name="Client.class">
+			</include>
+			<include name="Commands/*.class">
+			</include>
+			
+    			</fileset>
+			 <manifest>
+                		<attribute name="Main-Class" value="Main"/>
+                		<attribute name="Specification-Version" value="1.0"/>
+            		</manifest>
+    		</jar>
+	</target>
+	<target name = "clean" description = "Cleaning .class files" depends = "path">
+		<echo> Cleaning...</echo>
+		<delete>
+        		<fileset dir="${baseDir}" includes="**/*.class"/>
+			<fileset dir="${baseDir}/" includes="*.jar"/>
+
+    		</delete>
+	</target> 
+
+		<target name="scp" depends="build">
+
+        		<scp file="${baseDir}/myProject.jar" todir="${login}@${servername}:${serverdir}" port="${serverport}" password="${password}" trust = "true">
+				
+			</scp>
+
+   		</target>
+	
+	
+	
+
+	<target name="test" depends="compile">
+        
+        
+	<property name="junit.path" refid="junit.class.path"/>
+        <junit printsummary="true" haltonerror="true" haltonfailure="false">
+        <classpath refid = "junit.class.path"/>	
+        <formatter type="xml" usefile="true"/>
+        <test name="CalculatorTest" />
+            
+        </junit>
+    </target>
+		
+
+	 <target name="history" depends="compile" if="compile.fail" unless="compile.successful">
+	
+        <local name="git.currentcommit"/>
+        <local name="git.previouscommit"/>
+
+	<exec executable="git" failonerror="false">
+            <arg line="clone https://github.com/Paradocsal/MSP"/>
+        </exec>
+
+       
+        <condition property="firstcommit">
+            <equals arg1="${git.currentcommit}" arg2="${git.previouscommit}"/>
+        </condition>
+	<fail if="firstcommit" message="It's the first commit"/>
+
+        
+	
+	<antcall target="gitbackup">
+	
+            <param name="git.previouscommit" value="${git.currentcommit}"/>
+        </antcall>
+	
+
+ 	</target>
+	<target name="gitbackup" unless="compile.successful">
+	
+
+	<mkdir dir="temp"/>
+	<mkdir dir="temp/s"/>
+	
+	<move todir="temp/s">
+		<fileset dir="${srcDir}"/>
+	</move>
+	<move todir="${srcDir}">
+		<fileset dir="MSP"/>
+	</move>
+	<local name="git.currentcommit"/>
+	<antcall target="build"/>
+	
+	
+	<exec dir="/home/s285683/apache/MSP" executable="git" failonerror="false">
+            <arg line="reset --hard HEAD~"/>
+		</exec>
+	
+	
+        <exec executable="git" dir="/home/s285683/apache/MSP" output="diff.txt" append="true">
+            <arg line="diff"/>
+        </exec>
+
+
+	
+	
+
+	
+
+		
+
+	<antcall target="history"/>
+
+	</target>
+
+
+        
+   
+
+    
+	<manifest file="MANIFEST.MF" >
+  				<attribute name="Built-By" value="${user.name}"/>
+  				<section name="Info">
+					<attribute name="Specification-Title" value="ThisIsMyManifest"/>
+					
+				
+					
+				</section>
+  				<section name="Main.class">
+					<attribute name="Main-class" value="C:\Users\Sergey\IdeaProjects\lab7server-main\baseNdrum\Main.class"/>
+    					<attribute name="Sealed" value="false"/>
+					
+  				</section>
+			</manifest>	
+	<target name="run" depends="build" description="Run program">
+    		<java jar="${baseDir}/myProject.jar" fork="true"/>
+	</target>
+</project>
+
